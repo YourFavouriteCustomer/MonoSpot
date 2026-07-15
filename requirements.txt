@@ -1,0 +1,8 @@
+spotipy
+aiohttp
+tinytuya
+piexif
+opencv-python
+scikit-learn
+numpy
+python-dotenv
