@@ -1,6 +1,4 @@
-# LightSpot - Spotify to Tuya Light Sync
-
-Syncs Tuya smart lights with your currently playing Spotify track by extracting colors from album art.
+# MonoSpot - Spotify to Tuya Light Sync
 
 ## How It Works
 
@@ -15,24 +13,6 @@ Syncs Tuya smart lights with your currently playing Spotify track by extracting 
 - Python 3.10+
 - Spotify Developer account (for API credentials)
 - Tuya IoT platform account (for device control)
-
-### Python Dependencies
-
-```
-spotipy
-aiohttp
-tinytuya
-piexif
-opencv-python
-scikit-learn
-numpy
-python-dotenv
-```
-
-Install with:
-```bash
-pip install -r requirements.txt
-```
 
 ## Setup
 
@@ -68,9 +48,3 @@ The script will:
 1. Create an `images/` directory for caching album art
 2. Fetch your Tuya device's current state
 3. Start polling Spotify for track changes
-
-## Limitations
-
-- Local files: Lights restore to original state (no album art available from Spotify API)
-- Requires active internet connection for both Spotify and Tuya APIs
-- First-time Spotify authentication requires browser interaction
