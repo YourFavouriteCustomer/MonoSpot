@@ -54,6 +54,9 @@ async def fetch_spotify_data() -> dict | None:
                 return None
         except spotipy.SpotifyException as e:
             print(f"Spotify API Error: {e}. Retrying in {2 ** attempt} seconds...")
+        except spotipy.SpotifyOauthError as e:
+            print(f"Spotify OAuth Error: {e}. Delete .cache or check your credentials, then try again")
+            raise SystemExit(1)
         except Exception as e:
             print(f"Unexpected Error: {e}. Retrying in {2 ** attempt} seconds...")
 
@@ -70,7 +73,7 @@ async def get_spotify_track():
         raise ValueError("TUYA_DEVICE_ID not set")
 
     # Haven't played anything in a while or local files are being played
-    if result is None or result["item"] is None or result["item"]["is_local"] is False:
+    if result is None or result["item"] is None or result["item"]["is_local"] is True:
         status = None
     else:
         status = result["is_playing"]
