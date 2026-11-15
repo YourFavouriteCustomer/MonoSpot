@@ -64,23 +64,39 @@ def get_original_state(device_id: str):
     data = c.getstatus(device_id)
     if data["success"] is not True:
         raise Exception("Original state not received")
-    ORIGINAL_STATE = data["result"]
 
     # The return response is bad: scene_data_v2 and colour_data_v2 should have JSON in values,
-    # but they are returned as strings. It's necessary to convert them to proper types.
-    i = 0
-    while i < len(ORIGINAL_STATE):
-        state = ORIGINAL_STATE[i]
+    # but they are returned as strings. It is necessary to convert them to proper types.
+    status_map = {}
+    for state in data["result"]:
+        code = state["code"]
         value = state["value"]
         if isinstance(value, str):
-            if value.startswith("AA") or value == "": # Also, filtering out garbage data and empty strings
-                del ORIGINAL_STATE[i]
+            if value.startswith("AA") or value == "":
                 continue
             try:
-                state["value"] = json.loads(value)
+                value = json.loads(value)
             except json.JSONDecodeError:
                 pass
-        i += 1
+        status_map[code] = value
+
+    if status_map.get("switch_led") is False:
+        ORIGINAL_STATE = [{"code": "switch_led", "value": False}]
+        return
+
+    mode_codes = {
+        "white": ["switch_led", "work_mode", "bright_value_v2", "temp_value_v2"],
+        "colour": ["switch_led", "work_mode", "colour_data_v2"],
+        "scene": ["switch_led", "work_mode", "scene_data_v2"],
+    }
+    work_mode = str(status_map.get("work_mode", ""))
+    allowed_codes = mode_codes.get(work_mode, ["switch_led", "work_mode"])
+
+    ORIGINAL_STATE = [
+        {"code": code, "value": status_map[code]}
+        for code in allowed_codes
+        if code in status_map
+    ]
 
 
 def send_original_state(device_id: str):

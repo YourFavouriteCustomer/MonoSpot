@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 import piexif
 
 import ast
-from color_extractor import get_palette, convert_to_rgb
+from color_extractor import get_palette
 from device import send_new_scene, get_original_state, send_original_state
 
 import asyncio
@@ -18,8 +18,8 @@ load_dotenv()
 pause_event = asyncio.Event()
 pause_event.set()
 
-status = None
-previous_status = None
+playing_status = False
+previous_status = False
 image_id = "0"
 current_palette = None
 timeout = 2
@@ -32,11 +32,11 @@ sp = spotipy.Spotify(auth_manager=SpotifyOAuth(scope=scope, client_id=os.getenv(
 
 async def spotify_loop():
     """Continuously fetches the current playing song and updates the light color."""
-    global status, timeout
+    global playing_status, timeout
     while True:
         await pause_event.wait()
         await get_spotify_track()
-        if status is None:
+        if not playing_status:
             timeout = 5
         else:
             timeout = 2
@@ -66,18 +66,16 @@ async def fetch_spotify_data() -> dict | None:
 
 
 async def get_spotify_track():
-    global status, previous_status, image_id, current_palette
+    global playing_status, previous_status, image_id, current_palette
     result = await fetch_spotify_data()
     device_id = os.getenv('TUYA_DEVICE_ID')
     if device_id is None:
         raise ValueError("TUYA_DEVICE_ID not set")
 
-    # Haven't played anything in a while or local files are being played
-    if result is None or result["item"] is None or result["item"]["is_local"] is True:
-        status = None
+    # Nothing is playing or local files are being played
+    if result is None or result["item"] is None or result["is_playing"] is False or result["item"]["is_local"] is True:
+        playing_status = False
     else:
-        status = result["is_playing"]
-
         if len(result["item"]["album"]["images"]) > 0:
             # [1] gives 300x300px. If you want to save on space, go with [0]. If you want higher quality album art, go with [2]
             image_url = result["item"]["album"]["images"][1]["url"]
@@ -89,18 +87,20 @@ async def get_spotify_track():
 
             artist, title, palette = get_metadata(image_path)
             current_palette = palette
+            playing_status = True
 
             if image_id != new_image_id:
                 print(f"{artist} - {title}", end="  ")
                 await asyncio.to_thread(send_new_scene, device_id, palette)
+                previous_status = playing_status
                 image_id = new_image_id
 
-    if status != previous_status:
-        if status is True and previous_status is not True and current_palette is not None:
+    if playing_status != previous_status:
+        if playing_status is True and previous_status is False and current_palette is not None:
             await asyncio.to_thread(send_new_scene, device_id, current_palette)
-        elif status is not True and previous_status is True:
+        elif playing_status is False and previous_status is True:
             await asyncio.to_thread(send_original_state, device_id)
-        previous_status = status
+        previous_status = playing_status
 
 
 async def get_image(image_path: str, image_url: str, result: dict):
